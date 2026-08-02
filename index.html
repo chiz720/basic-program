@@ -86,6 +86,12 @@
   }
   .live-banner .inner.upcoming { background: linear-gradient(135deg, var(--blue), #123a54); box-shadow: 0 6px 18px rgba(26,82,118,.25); }
   .live-banner .inner.ended { background: linear-gradient(135deg, #5d6d7e, #46545f); box-shadow: none; }
+  .live-banner .inner.warning {
+    background: linear-gradient(135deg, #b9770e, #92600a);
+    box-shadow: 0 6px 18px rgba(185,119,14,.35);
+    animation: flashWarn 1.2s infinite;
+  }
+  @keyframes flashWarn { 50% { filter: brightness(1.22); } }
   .live-banner .badge {
     background: rgba(255,255,255,.18);
     border: 1px solid rgba(255,255,255,.3);
@@ -217,6 +223,7 @@
     .session .time { min-width: 78px; font-size: .76rem; }
     .session .topic { font-size: .88rem; }
     .live-banner .count { display: none; }
+    .live-banner .inner.warning .count { display: block; }
   }
 </style>
 </head>
@@ -358,29 +365,53 @@ function selectDay(idx) {
   render();
 }
 
-function render() {
-  const now = Date.now();
-  const dayIdx = currentDay === null ? autoDayIndex(now) : currentDay;
-  const day = DAYS[dayIdx];
+const WARN_MS = 5 * 60 * 1000;
+const warned = new Set();
 
-  document.getElementById("tab0").classList.toggle("active", dayIdx === 0);
-  document.getElementById("tab1").classList.toggle("active", dayIdx === 1);
+function fmtMMSS(ms) {
+  const totalSec = Math.max(0, Math.ceil(ms / 1000));
+  const m = Math.floor(totalSec / 60), s = totalSec % 60;
+  return m + ":" + String(s).padStart(2, "0");
+}
 
+function chime() {
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    [0, 0.25, 0.5].forEach((t, i) => {
+      const o = ctx.createOscillator(), g = ctx.createGain();
+      o.connect(g); g.connect(ctx.destination);
+      o.frequency.value = i === 2 ? 1175 : 880;
+      g.gain.setValueAtTime(0.001, ctx.currentTime + t);
+      g.gain.exponentialRampToValueAtTime(0.2, ctx.currentTime + t + 0.02);
+      g.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + t + 0.2);
+      o.start(ctx.currentTime + t); o.stop(ctx.currentTime + t + 0.22);
+    });
+  } catch (e) { /* audio unavailable or blocked */ }
+}
+
+function updateBanner(now) {
   const { live, next } = findLive(now);
-
-  // Banner
   const banner = document.getElementById("liveBanner");
   const inner = document.getElementById("bannerInner");
   const badge = document.getElementById("bannerBadge");
   banner.hidden = false;
   if (live) {
-    inner.className = "inner";
-    badge.innerHTML = '<span class="dot"></span>LIVE NOW';
+    const rem = live.end - now;
+    if (rem <= WARN_MS) {
+      inner.className = "inner warning";
+      badge.innerHTML = '<span class="dot"></span>⏰ ENDING SOON';
+      document.getElementById("bannerCount").textContent = fmtMMSS(rem) + " remaining";
+      const key = live.d + "-" + live.i;
+      if (!warned.has(key)) { warned.add(key); chime(); }
+    } else {
+      inner.className = "inner";
+      badge.innerHTML = '<span class="dot"></span>LIVE NOW';
+      document.getElementById("bannerCount").textContent = fmtDur(rem) + " remaining";
+    }
     document.getElementById("bannerTopic").textContent = live.s[2];
     document.getElementById("bannerMeta").textContent =
       DAYS[live.d].label + " · " + live.s[0] + " – " + live.s[1] +
       (live.s[3] ? " · " + live.s[3] : "");
-    document.getElementById("bannerCount").textContent = fmtDur(live.end - now) + " remaining";
   } else if (next) {
     inner.className = "inner upcoming";
     badge.innerHTML = "UP NEXT";
@@ -396,6 +427,19 @@ function render() {
     document.getElementById("bannerMeta").textContent = "Thank you for attending — safe travels!";
     document.getElementById("bannerCount").textContent = "";
   }
+}
+
+function render() {
+  const now = Date.now();
+  const dayIdx = currentDay === null ? autoDayIndex(now) : currentDay;
+  const day = DAYS[dayIdx];
+
+  document.getElementById("tab0").classList.toggle("active", dayIdx === 0);
+  document.getElementById("tab1").classList.toggle("active", dayIdx === 1);
+
+  const { next } = findLive(now);
+
+  updateBanner(now);
 
   // Schedule list
   const el = document.getElementById("schedule");
@@ -437,6 +481,7 @@ function render() {
 
 function tick() {
   document.getElementById("clock").textContent = nowEATString();
+  updateBanner(Date.now());
 }
 
 render();
