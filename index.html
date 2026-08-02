@@ -36,13 +36,21 @@
     text-align: center;
     position: relative;
   }
-  header img.logo {
-    width: 64px; height: 64px;
+  .logo-row {
+    display: flex; justify-content: center; align-items: center;
+    gap: .9rem; margin-bottom: .6rem; flex-wrap: wrap;
+  }
+  .logo-row img { background: #fff; object-fit: contain; }
+  .logo-row img.round {
+    width: 56px; height: 56px;
     border-radius: 50%;
-    background: #fff;
     padding: 4px;
-    object-fit: contain;
-    margin-bottom: .5rem;
+  }
+  .logo-row img.main { width: 68px; height: 68px; }
+  .logo-row img.wide {
+    height: 46px; width: auto;
+    border-radius: 10px;
+    padding: 6px 12px;
   }
   header h1 { font-size: 1.25rem; letter-spacing: .02em; }
   header .sub { font-size: .85rem; opacity: .85; margin-top: .25rem; }
@@ -230,7 +238,11 @@
 <body>
 
 <header>
-  <img class="logo" src="basic-logo.png" alt="BASIC logo">
+  <div class="logo-row">
+    <img class="round" src="ccsk-logo.png" alt="Critical Care Society of Kenya">
+    <img class="round main" src="basic-logo.png" alt="BASIC">
+    <img class="wide" src="baylem-logo.png" alt="Baylem — Innovative Healthcare Solutions">
+  </div>
   <h1>BASIC Provider Course</h1>
   <div class="sub">Basic Assessment and Support in Intensive Care</div>
   <div class="sub">📍 KCB Plaza Auditorium, Upper Hill &nbsp;•&nbsp; 6–7 August 2026</div>
